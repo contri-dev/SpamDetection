@@ -5,24 +5,33 @@ output:
     df_print: paged
 ---
 
+### Importação das libs
 ```{r}
 require(quanteda)#natural language processing package
-?quanteda 
 require(RColorBrewer)
 require(ggplot2)
 ```
+
+### Lendo o dataset.
 ```{r}
 spam=read.csv("spam.csv",header=TRUE, sep=",", quote='\"\"', stringsAsFactors=FALSE)
-table(spam$v1)
 ```
+
+### Olhando as primeiras linhas.
 ```{r}
 head(spam)
 ```
+### Verificando a distribuição.
+```{r}
+table(spam$v1)
+```
+### Renomeando as colunas
 ```{r}
 names(spam)<-c("type","message")
 head(spam)
 ```
 
+### Plotando a distribuição do tipo de email.
 ```{r}
 p<-ggplot(data=spam, aes(x=type, y=nrow(spam), fill=type)) +
   geom_bar(stat="identity")+theme_minimal()+
@@ -30,16 +39,21 @@ p<-ggplot(data=spam, aes(x=type, y=nrow(spam), fill=type)) +
          x="Classificação", y = "Quantidade")
 p
 ```
+
+### Embaralhando o dataframe.
+
 ```{r}
 set.seed(2012)
 spam<-spam[sample(nrow(spam)),] #randomly shuffling the dataset
 ```
 
+### Criando o corpus e anexando o tipo às mensagens.
 ```{r}
 msg.corpus<-corpus(spam$message)
 docvars(msg.corpus, 'docvar') <- spam$type   #attaching the class labels to the corpus message text
 docvars(msg.corpus)
 ```
+## Plotando a Nuvem de Palavras de "spam"
 
 ```{r}
 #subsetting only the spam messages
@@ -50,6 +64,9 @@ spam.col <- brewer.pal(10, "BrBG")
 textplot_wordcloud(spam.plot, min_count = 16, color = spam.col)  
 title("Spam Wordcloud", col.main = "grey14")
 ```
+
+## Plotando a Nuvem de Palavras de "ham"
+
 ```{r}
 ham.plot<-corpus_subset(msg.corpus,docvar=="ham")
 ham.plot<-dfm(ham.plot,tolower = TRUE, remove_punct = TRUE, remove_symbols = TRUE, what = "word", remove_numbers = TRUE,remove=c("gt", "lt",stopwords(source = "smart")))
@@ -58,7 +75,45 @@ textplot_wordcloud(ham.plot,min_count=50,color=ham.col,fixed_aspect=TRUE)
 title("Ham Wordcloud",col.main = "grey14")
 ```
 
+## Separando dados entre treino e teste
+
 ```{r}
+spam.train<-spam[1:4458,]
+spam.test<-spam[4458:nrow(spam),]
+msg.dfm <- dfm(msg.corpus, tolower = TRUE)  #generating document freq matrix
+msg.dfm <- dfm_trim(msg.dfm, min_termfreqError = 5, min_docfreq = 3)  
+msg.dfm <- dfm_weight(msg.dfm) 
+head(msg.dfm)
+#training and testing data of dfm 
+msg.dfm.train<-msg.dfm[1:4458,]
+msg.dfm.test<-msg.dfm[4458:nrow(spam),]
+```
+
+## Treinando o modelo de classificação:
+
+```{r}
+require(quanteda.textmodels)
+quanteda.textmodels::textmodel_nb(msg.dfm.train,spam.train[,1], distribution = c('multinomial'))
+classifier = textmodel_nb(msg.dfm.train,spam.train[,1], distribution = c('multinomial'))
+classifier
+```
+
+## Matriz de confusão:
+
+```{r}
+require(caret)
+pred<-predict(classifier,msg.dfm.test)
+confusionMatrix(table(predicted=pred,actual=spam.test[,1]))
+```
+
+## Accuracy:
+
+```{r}
+ac = mean(pred==spam.test[,1])*100
+ac
+```
+```{r}
+test = 'The 48 hour flash sale has started! The best courses start at R $ 22.90 each.'
 
 ```
 
