@@ -1,0 +1,64 @@
+---
+title: "Spam Detection"
+output:
+  html_document:
+    df_print: paged
+---
+
+```{r}
+require(quanteda)#natural language processing package
+?quanteda 
+require(RColorBrewer)
+require(ggplot2)
+```
+```{r}
+spam=read.csv("spam.csv",header=TRUE, sep=",", quote='\"\"', stringsAsFactors=FALSE)
+table(spam$v1)
+```
+```{r}
+head(spam)
+```
+```{r}
+names(spam)<-c("type","message")
+head(spam)
+```
+
+```{r}
+p<-ggplot(data=spam, aes(x=type, y=nrow(spam), fill=type)) +
+  geom_bar(stat="identity")+theme_minimal()+
+  labs(title="Distribuição dos emails", 
+         x="Classificação", y = "Quantidade")
+p
+```
+```{r}
+set.seed(2012)
+spam<-spam[sample(nrow(spam)),] #randomly shuffling the dataset
+```
+
+```{r}
+msg.corpus<-corpus(spam$message)
+docvars(msg.corpus, 'docvar') <- spam$type   #attaching the class labels to the corpus message text
+docvars(msg.corpus)
+```
+
+```{r}
+#subsetting only the spam messages
+spam.plot<-corpus_subset(msg.corpus,docvar=="spam")
+#now creating a document-feature matrix using dfm()
+spam.plot<-dfm(spam.plot, tolower = TRUE, remove_punct = TRUE,remove_symbols = TRUE, what = "word", remove_numbers = TRUE, remove=stopwords(source = "smart"))
+spam.col <- brewer.pal(10, "BrBG")
+textplot_wordcloud(spam.plot, min_count = 16, color = spam.col)  
+title("Spam Wordcloud", col.main = "grey14")
+```
+```{r}
+ham.plot<-corpus_subset(msg.corpus,docvar=="ham")
+ham.plot<-dfm(ham.plot,tolower = TRUE, remove_punct = TRUE, remove_symbols = TRUE, what = "word", remove_numbers = TRUE,remove=c("gt", "lt",stopwords(source = "smart")))
+ham.col=brewer.pal(10, "BrBG")  
+textplot_wordcloud(ham.plot,min_count=50,color=ham.col,fixed_aspect=TRUE)
+title("Ham Wordcloud",col.main = "grey14")
+```
+
+```{r}
+
+```
+
